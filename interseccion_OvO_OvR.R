@@ -13,9 +13,9 @@
 # =============================================================================
 
 # ------------------------------- Parámetros ---------------------------------
-ovo_raw <- read.csv("C:/Users/danil/OneDrive/Documentos/resultados_552_one_vs_one/genes_unicos_OvO.tsv", sep="\t")
-ovr_raw <- read.csv("C:/Users/danil/OneDrive/Documentos/resultados_552_one_vs_others/unique_genes_catalog_TOP.tsv", sep="\t")
-OUT_DIR <- "resultados_interseccion"
+ovo_raw <- read.csv("C:/Users/danil/OneDrive/Documentos/tesis-brca-multimodal/resultados_552_one_vs_one/genes_unicos_OvO.tsv", sep="\t")
+ovr_raw <- read.csv("C:/Users/danil/OneDrive/Documentos/tesis-brca-multimodal/resultados_552_one_vs_others/unique_genes_catalog_TOP.tsv", sep="\t")
+#OUT_DIR <- "resultados_interseccion"
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
 
 
@@ -116,13 +116,13 @@ write.table(data.frame(Gene = genes_union),
             sep = "\t", quote = FALSE, row.names = FALSE)
 
 # =============================================================================
-# 6) Guardar salidas
+# 6) Guardar salidas de genes de unión con su expresión (proviene de los analisis previos de procesamiento)
 # =============================================================================
 expr_union <- log2_filtrado[rownames(log2_filtrado) %in% genes_union, , drop = FALSE]
 dim(expr_union)
 
 
-mapa <- read.delim("C:/Users/danil/OneDrive/Documentos/resultados_552_one_vs_one/mapa_muestras.tsv",
+mapa <- read.delim("C:/Users/danil/OneDrive/Documentos/tesis-brca-multimodal/resultados_552_one_vs_one/mapa_muestras.tsv",
                    sep = "\t", stringsAsFactors = FALSE)
 
 barcodes <- mapa$TCGA_Barcode[match(colnames(expr_union), mapa$Sample_ID)]
@@ -132,5 +132,54 @@ salida <- rbind(
   cbind(rownames(expr_union), as.data.frame(expr_union, check.names = FALSE))
 )
 
-write.table(salida, "expr_union.tsv",
-            sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+
+subtipos <- sub("\\.[0-9]+$", "", colnames(expr_union))          # BRCA_LumA, BRCA_LumB, ...
+barcodes <- mapa$TCGA_Barcode[match(colnames(expr_union), mapa$Sample_ID)]
+
+# --- Armar la tabla de salida: 2 filas de encabezado + expresión ---
+salida <- rbind(
+  c("Subtipo",    subtipos),
+  c("IDPaciente", barcodes),
+  cbind(rownames(expr_union), as.data.frame(expr_union, check.names = FALSE))
+)
+
+# --- Escribir el archivo ---
+write.table(
+  salida, file.path(OUT_DIR, "Consensus_DEG_signature.tsv"),
+  sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE
+)
+
+
+# =============================================================================
+# 7) Tabla resumen: genes por (Subtipo, Dirección) en OvR, OvO e intersección
+# =============================================================================
+# Cuenta genes distintos por combinación Subtype+Direction en cada lista
+conteo <- function(df, nombre) {
+  agg <- aggregate(Gene ~ Subtype + Direction, data = df,
+                   FUN = function(g) length(unique(g)))
+  names(agg)[3] <- nombre
+  agg
+}
+
+tab_ovr <- conteo(ovr,      "Genes_OvR")
+tab_ovo <- conteo(ovo,      "Genes_OvO")
+tab_int <- conteo(consenso, "Genes_Interseccion")   # consenso = intersección nivel triple
+
+# Unir las tres columnas (todas las combinaciones; 0 donde falte)
+resumen <- Reduce(function(a, b) merge(a, b, by = c("Subtype", "Direction"), all = TRUE),
+                  list(tab_ovr, tab_ovo, tab_int))
+resumen[is.na(resumen)] <- 0
+
+# Etiqueta "UP_LumA" y orden (LumA, LumB, Basal) x (UP, DOWN)
+resumen$Subtipo    <- paste(resumen$Direction, resumen$Subtype, sep = "_")
+resumen$Subtype    <- factor(resumen$Subtype,    levels = c("LumA", "LumB", "Basal"))
+resumen$Direction  <- factor(resumen$Direction,  levels = c("UP", "DOWN"))
+resumen <- resumen[order(resumen$Subtype, resumen$Direction), ]
+resumen <- resumen[, c("Subtipo", "Genes_OvR", "Genes_OvO", "Genes_Interseccion")]
+
+cat("\n--- Tabla resumen por subtipo y dirección ---\n")
+print(resumen, row.names = FALSE)
+
+write.table(resumen, file.path(OUT_DIR, "tabla_resumen_subtipo_direccion.tsv"),
+            sep = "\t", quote = FALSE, row.names = FALSE)
