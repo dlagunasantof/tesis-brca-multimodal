@@ -6,6 +6,7 @@
 # Salida  : genes ÚNICOS por subtipo y dirección (UP/DOWN) sobre el TOP de genes
 #           más variables, más el panel de expresión y el catálogo etiquetado
 #           que alimentan el análisis de intersección posterior.
+#           + PDFs de gráficos (PCA, Volcano, MA y Heatmap) por análisis.
 #
 # NOTA METODOLÓGICA:
 #  - La DE se corre sobre todos los genes filtrados (referencia) y sobre los
@@ -20,6 +21,10 @@
 
 suppressPackageStartupMessages({
   library(limma)
+  library(ggplot2)          # <-- AÑADIDO: PCA con ggplot
+  library(pheatmap)         # <-- AÑADIDO: heatmaps
+  library(RColorBrewer)     # <-- AÑADIDO: paletas
+  library(EnhancedVolcano)  # <-- AÑADIDO: volcano plots
 })
 
 # ------------------------------- Parámetros ---------------------------------
@@ -31,12 +36,13 @@ LFC_CUT      <- 1        # umbral de |log2FC|
 ZERO_FRAC    <- 0.50     # se descarta un gen con > 50% de ceros
 COR_CUT      <- 0.75     # correlación media para señalar outliers
 TOPN_VAR     <- 1000     # nº de genes más variables (análisis principal)
+TOPN_HEATMAP <- 100      # genes por contraste en los heatmaps
 
-# Muestras a eliminar tras inspección de outliers. 'BRCA_Basal.70' se retira por
 # baja correlación media con el resto (revisado manualmente). c() = no eliminar.
 OUTLIERS_TO_REMOVE <- c()
 
 SUBTYPE_LEVELS <- c("LumA", "LumB", "Basal")
+SAVE_PLOTS   <- TRUE     # guarda PDFs en OUT_DIR; FALSE -> a pantalla
 
 dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
 
@@ -123,9 +129,6 @@ if (length(outliers_detectados)) {
 samples_postfilter <- colnames(log2_filtrado)
 cat("Matriz final:", nrow(log2_filtrado), "genes x",
     ncol(log2_filtrado), "muestras\n")
-samples_postfilter <- colnames(log2_filtrado)
-cat("Matriz final:", nrow(log2_filtrado), "genes x",
-    ncol(log2_filtrado), "muestras\n")
 
 # =============================================================================
 # 4) Definición de subtipos y mapa de trazabilidad
@@ -188,6 +191,85 @@ deg_summary <- function(tt_list, padj_cut = PADJ_CUT, lfc_cut = LFC_CUT) {
   )
 }
 
+# ------------------------- Funciones de gráficos ----------------------------
+# (copiadas del script one-vs-one; son genéricas: iteran sobre names(res$tt),
+#  por lo que sirven igual para los contrastes *_vs_others)
+
+# PCA sobre la unión de DEGs de todos los contrastes
+pca_union_degs <- function(expr_mat, subtypes, tt_list,
+                           padj_cut = PADJ_CUT, lfc_cut = LFC_CUT,
+                           titulo = "PCA - Unión DEGs") {
+  degs_union <- unique(unlist(lapply(tt_list, function(tt)
+    rownames(tt[tt$adj.P.Val < padj_cut & abs(tt$logFC) > lfc_cut, , drop = FALSE]))))
+  if (length(degs_union) < 2) {
+    message("No hay suficientes DEGs para PCA: ", length(degs_union)); return(invisible())
+  }
+  X  <- expr_mat[intersect(degs_union, rownames(expr_mat)), , drop = FALSE]
+  p  <- prcomp(t(X), scale. = TRUE)
+  ve <- 100 * (p$sdev^2) / sum(p$sdev^2)
+  df <- data.frame(PC1 = p$x[, 1], PC2 = p$x[, 2], Subtype = subtypes)
+  print(
+    ggplot(df, aes(PC1, PC2, color = Subtype)) +
+      geom_point(size = 2.2) +
+      theme_minimal(base_size = 12) +
+      xlab(sprintf("PC1 (%.1f%%)", ve[1])) +
+      ylab(sprintf("PC2 (%.1f%%)", ve[2])) +
+      ggtitle(titulo)
+  )
+}
+
+# Volcano + MA por contraste. AMBOS usan FDR (adj.P.Val), coherente con las
+# listas de genes: lo que se marca en rojo es exactamente lo que entra a los DEGs.
+plot_volcano_y_MA <- function(fit2, tt, coef_name, titulo_prefix = "",
+                              padj_cut = PADJ_CUT, lfc_cut = LFC_CUT) {
+  # Volcano sobre FDR
+  print(
+    EnhancedVolcano(tt, lab = rownames(tt), x = "logFC", y = "adj.P.Val",
+                    title   = paste0(coef_name, " - ", titulo_prefix),
+                    ylab    = bquote(~-Log[10]~ 'FDR'),
+                    pCutoff = padj_cut, FCcutoff = lfc_cut)
+  )
+  # MA sobre FDR (p ajustado BH del coeficiente)
+  coef_idx <- which(colnames(fit2$coefficients) == coef_name)
+  padj <- p.adjust(fit2$p.value[, coef_idx], method = "BH")
+  lfc  <- fit2$coefficients[, coef_idx]
+  status <- rep(0L, length(padj))
+  status[padj < padj_cut & lfc >  lfc_cut] <-  1L
+  status[padj < padj_cut & lfc < -lfc_cut] <- -1L
+  plotMA(fit2, coef = coef_name, status = status,
+         main = sprintf("MA - %s (%s) FDR<%.2f & |logFC|>%g",
+                        coef_name, titulo_prefix, padj_cut, lfc_cut))
+  abline(h = c(-lfc_cut, lfc_cut), lty = 2, col = "red")
+}
+
+# Heatmap de los top genes por contraste
+heatmap_top_by_contrast <- function(expr_mat, subtypes, tt_list,
+                                    topN = TOPN_HEATMAP, titulo = "Heatmap top sig") {
+  top_genes <- unique(unlist(lapply(tt_list, function(tt)
+    head(rownames(tt[order(tt$adj.P.Val), , drop = FALSE]), topN))))
+  sel <- intersect(top_genes, rownames(expr_mat))
+  if (length(sel) < 2) {
+    message("No hay suficientes genes para heatmap (n=", length(sel), ")"); return(invisible())
+  }
+  ann <- data.frame(Subtype = subtypes); rownames(ann) <- colnames(expr_mat)
+  pal <- colorRampPalette(c("navy", "white", "firebrick3"))(255)
+  pheatmap(expr_mat[sel, , drop = FALSE], scale = "row", show_rownames = FALSE,
+           annotation_col = ann, clustering_method = "ward.D2",
+           main = titulo, color = pal)
+}
+
+# Corre el bloque de gráficos de un análisis, a pantalla o a un PDF
+run_plots <- function(expr_mat, subtypes, res, etiqueta) {
+  pdf_path <- file.path(OUT_DIR, paste0("plots_", etiqueta, ".pdf"))
+  if (SAVE_PLOTS) pdf(pdf_path, width = 8, height = 6) else devAskNewPage(TRUE)
+  pca_union_degs(expr_mat, subtypes, res$tt, titulo = paste0("PCA (Unión DEGs) - ", etiqueta))
+  for (cf in names(res$tt))
+    plot_volcano_y_MA(res$fit2, res$tt[[cf]], cf, titulo_prefix = etiqueta)
+  heatmap_top_by_contrast(expr_mat, subtypes, res$tt,
+                          titulo = paste0("Heatmap top sig - ", etiqueta))
+  if (SAVE_PLOTS) { dev.off(); cat("Gráficos ->", pdf_path, "\n") } else devAskNewPage(FALSE)
+}
+
 # =============================================================================
 # 7) Referencia — DE sobre todos los genes filtrados (no alimenta las listas)
 # =============================================================================
@@ -196,6 +278,7 @@ res_all <- fit_limma(log2_filtrado, design, contr)
 print(deg_summary(res_all$tt))
 write.csv(deg_summary(res_all$tt),
           file.path(OUT_DIR, "DEG_summary_ALL.csv"), row.names = FALSE)
+run_plots(log2_filtrado, subtypes, res_all, "ALL")   # <-- AÑADIDO: gráficos ALL
 
 # =============================================================================
 # 8) Análisis principal — TOP genes más variables
@@ -215,6 +298,7 @@ cat("Filas TOP (LumA/LumB/Basal):",
 print(deg_summary(res_top$tt))
 write.csv(deg_summary(res_top$tt),
           file.path(OUT_DIR, "DEG_summary_TOP.csv"), row.names = FALSE)
+run_plots(expr_top, subtypes, res_top, paste0("TOP", TOPN_VAR))  # <-- AÑADIDO: gráficos TOP
 
 # =============================================================================
 # 9) Genes por dirección y unicidad por (subtipo, dirección)
@@ -295,4 +379,5 @@ cat("\nSalidas escritas en", OUT_DIR, ":\n",
     "- DEG_summary_ALL.csv / DEG_summary_TOP.csv\n",
     "- unique_{UP,DOWN}_{LumA,LumB,Basal}_TOP.tsv (listas simples)\n",
     "- expr_panel_unique_TOP.tsv + sample_info_TOP.tsv\n",
-    "- unique_genes_catalog_TOP.tsv (entrada a la intersección)\n")
+    "- unique_genes_catalog_TOP.tsv (entrada a la intersección)\n",
+    "- plots_ALL.pdf / plots_TOP", TOPN_VAR, ".pdf (PCA, Volcano, MA, Heatmap)\n")

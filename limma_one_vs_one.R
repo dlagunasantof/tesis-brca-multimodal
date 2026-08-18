@@ -135,6 +135,7 @@ samples_postfilter <- colnames(log2_filtrado)
 cat("Matriz final:", nrow(log2_filtrado), "genes x",
     ncol(log2_filtrado), "muestras\n")
 
+
 # =============================================================================
 # 4) Definición de subtipos y mapa de trazabilidad
 # =============================================================================
@@ -158,6 +159,32 @@ write.table(meta_map, file.path(OUT_DIR, "mapa_muestras.tsv"),
             sep = "\t", quote = FALSE, row.names = FALSE)
 cat("Muestras eliminadas respecto al inicio:",
     paste(setdiff(samples_original, samples_postfilter), collapse = ", "), "\n")
+
+# =============================================================================
+# Guardar matriz filtrada log2 CONSERVANDO el ID del paciente
+# =============================================================================
+
+cols_final   <- colnames(log2_filtrado)         # muestras que sobrevivieron al QC
+
+subtipo_row  <- as.character(subtypes)          # subtipo por muestra
+tcga_barcode <- sample_meta$TCGA_Barcode[match(cols_final, sample_meta$Column)]
+
+# Cuerpo: genes x muestras, con la columna de genes delante
+expr_mat <- as.matrix(log2_filtrado)
+expr_txt <- cbind(Gen = rownames(expr_mat), expr_mat)                     # se coacciona a character
+
+# Las dos filas de metadatos (mismo nº de columnas que expr_txt)
+fila_subtipo <- c("Subtipo",    subtipo_row)
+fila_id      <- c("IDPaciente", tcga_barcode)
+
+# Apilar: Subtipo + IDPaciente + expresión
+salida <- rbind(fila_subtipo, fila_id, expr_txt)
+rownames(salida) <- NULL
+
+write.table(salida,
+            file.path(OUT_DIR, "QC-filtered transcriptome.tsv"),
+            sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
+
 
 # =============================================================================
 # 5) Diseño y contrastes por pares
