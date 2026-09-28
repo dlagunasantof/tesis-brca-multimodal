@@ -1,0 +1,29 @@
+# Environment for 02_histopatologia (Python 3.10).
+# Tested with: TensorFlow 2.21.0, OpenCV 4.13.0.92, NumPy 2.4, pandas 2.3, scikit-image 0.26.
+# DRAFT: regenerate with `pip freeze > envs/requirements_wsi.txt` from a clean install of your working environment.
+#
+# NOTE: opencv-python-headless 4.13 requires NumPy >= 2, whereas the RNA environment pins NumPy 1.26.4.
+# Keep the two environments separate. Mixing them is a likely cause of the
+# "numpy.dtype size changed, may indicate binary incompatibility" error seen with scikit-learn-extra.
+
+# --- Preprocessing and E1 (mosaics + KimiaNet) ---
+tensorflow==2.21.0            # KimiaNet (Keras 3); use the GPU build if CUDA is available
+numpy>=2.0
+pandas>=2.0
+scipy>=1.11
+matplotlib>=3.7
+scikit-image>=0.22
+pillow>=10.0
+opencv-python-headless==4.13.0.92
+openslide-python==1.4.3
+openslide-bin==4.0.0.13
+jupyterlab>=4.0
+
+# --- E5 (UNI2-h embeddings; versions taken from the original environment, to be verified) ---
+torch==2.5.1                  # install the build matching your CUDA version: https://pytorch.org/get-started/locally/
+torchvision==0.20.1
+timm==0.9.16
+scikit-learn==1.7.2
+
+# scikit-learn-extra is NOT required by E1 (a k-medoids implementation is included in the mosaic notebook).
+# Install it only if E4/E5 use sklearn_extra.cluster.KMedoids (it needs a NumPy version compatible with its build).
