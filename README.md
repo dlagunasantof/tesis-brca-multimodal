@@ -58,11 +58,6 @@ tesis-brca-multimodal/
 │   ├── 01_similitud_y_mantel.ipynb         # patient-patient similarity + Mantel test
 │   ├── 02_mofa_y_clasificacion.ipynb       # MOFA+ training, classification, INC validation
 │   └── 03_gsea_factores.ipynb              # biological interpretation of the factors
-└── resultados/                             # Tables, enrichment results and figures
-    ├── tablas/
-    ├── david/
-    ├── gsea/
-    └── figuras/
 ```
 
 Directories that currently hold only a `.gitkeep` file are placeholders for the corresponding scripts and notebooks.
