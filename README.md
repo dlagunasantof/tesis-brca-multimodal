@@ -2,11 +2,11 @@
 
 Thesis repository for the integrated study of TCGA-BRCA bulk RNA-seq profiles and whole-slide histopathology images, fused with MOFA+, including external validation on the INC Bogotá cohort.
 
-> **Author:** [TO BE COMPLETED] · **Supervisor(s):** [TO BE COMPLETED] · **Institution:** [TO BE COMPLETED] · **Year:** [TO BE COMPLETED]
+> **Author:** Daniela Laguna-Santofimio· **Supervisor(s):** Liliana Lopez-Kleine, Fabio A. González· **Institution:** Universidad Nacional de Colombia· **Year:** 2026
 
 ## Abstract
 
-[TO BE COMPLETED]
+Breast cancer (BC) is characterized by high biological heterogeneity, resulting from genetic and environmental interactions that remodel the tumor microenvironment and complicate its clinical characterization. BC is the most common neoplasm and one of the leading causes of death among women worldwide. In 2022, 2.3 million cases were diagnosed and more than 665,000 deaths were recorded; in Colombia, these figures reached 17,018 cases and 4,752 deaths, with projections of sustained growth through 2045. This scenario poses a critical challenge for healthcare systems, exacerbated by the limited availability of specialists and diagnostic delays. Given the limitations of conventional diagnostic methods, this project proposes the development of machine learning models capable of integrating histopathological images and transcriptomic data to classify patients according to their subtype. BC has been classified using various histological, immunohistochemical, and molecular criteria; however, in this study, we focus on the classification of intrinsic molecular subtypes. Using machine learning approaches, this project aims to compare unimodal and multimodal models that may help elucidate key clinical variants relevant to classification. This work seeks to evaluate the effectiveness of integrating omics data and diagnostic images for breast cancer classification, thereby advancing toward more timely, accurate, and equitable diagnoses and contributing to the development of personalized medicine based on integrative methodologies supported by artificial intelligence.
 
 ## Study design
 
@@ -191,12 +191,4 @@ The spread from 0.000 to 1.000 across models that perform almost identically on 
 
 ## Data availability
 
-[TO BE COMPLETED — state the source of the TCGA-derived data and whether the INC Bogotá data can be shared.]
-
-## License
-
-[TO BE COMPLETED]
-
-## Citation
-
-[TO BE COMPLETED]
+The publicly available cohort corresponds to The Cancer Genome Atlas Breast Invasive Carcinoma (TCGA-BRCA) project, an initiative that links clinical phenotypes with molecular genotypes in invasive breast cancer (Cancer Genome Atlas Network, 2012, Nature). Clinical, genomic, pathological, and histopathological imaging data are available on the Genomic Data Commons portal (Grossman et al. 2016) of the National Cancer Institute (https://portal.gdc.cancer.gov/projects/TCGA-BRCA). To construct the working cohort, successive filters were applied to the portal: first, cases from the TCGA-BRCA project were selected; then, the files were filtered by data type, retaining only diagnostic slide images and gene expression data by RNA-seq; finally, the selection was restricted to open access files. INC data requires special permission for use.
