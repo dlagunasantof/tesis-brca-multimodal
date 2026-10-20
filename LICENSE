@@ -1,0 +1,39 @@
+MIT License
+
+Copyright (c) 2026 Daniela Laguna-Santofimio
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---------------------------------------------------------------------------
+Scope of this licence
+
+This licence covers the code written by the author of this repository.
+It does NOT cover:
+
+* 02_Histopathological_branch/E5_uni2h_kmedoids/E5_wsi_processing/
+  Developed by J. S. Malagon and included with his permission. Its terms of
+  use are his to set; contact him before reusing or redistributing it.
+
+* The weights of the KimiaNet, UNI and UNI2-h foundation models, which are
+  not redistributed here and remain subject to their own licences (UNI2-h is
+  gated on the Hugging Face Hub).
+
+* The TCGA-BRCA data, available from the Genomic Data Commons under the NIH
+  data use policies, and the INC Bogota data, which require specific
+  institutional permission.
